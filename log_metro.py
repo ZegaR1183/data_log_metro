@@ -89,25 +89,18 @@ def analyze_data(df: pd.DataFrame) -> None:
     """Анализирует данные и выводит статистику."""
     # Подсчет устройств по типам
     cnt_chassi = df.groupby('type').size()
-    print("Количество устройств по типам:")
-    print(cnt_chassi)
-    print()
 
     # Подсчет устройств с отключенными вентиляторами
     fan_columns = ['s_fan_1', 's_fan_2', 's_fan_3', 's_fan_4', 's_fan_5']
     cnt_1_fan_check = (df[fan_columns] == 0).any(axis=1).sum()
-    print(f"Устройства с отключенными вентиляторами: {cnt_1_fan_check}")
 
     # Подсчет устройств с двумя отключенными вентиляторами (кроме MX104)
     cnt_2_fans_check = ((df['s_fan_1'] == 0) & (df['s_fan_2'] == 0) & (df["type"] != "MX104")).sum()
-    print(f"Устройства с двумя отключенными вентиляторами (не MX104): {cnt_2_fans_check}")
 
     # Подсчет устройств с высокой температурой
     temp_columns = ['temp PEM_0', 'temp PEM_1', 'temp RE_0', 'temp RE_1']
     temp_warm = ((df['temp PEM_0'] > 50) | (df['temp PEM_1'] > 50) | (df['temp RE_0'] > 50) | (
                 df['temp RE_1'] > 50)).sum()
-    print(f"Устройства с высокой температурой: {temp_warm}")
-    print()
 
     # Фильтрация устройств с проблемами
     df_fan_alarm = df[(df['s_fan_1'] == 0) |
@@ -119,12 +112,36 @@ def analyze_data(df: pd.DataFrame) -> None:
     df_temp_alarm = df[
         (df['temp PEM_0'] > 50) | (df['temp PEM_1'] > 50) | (df['temp RE_0'] > 50) | (df['temp RE_1'] > 50)]
 
-    print("Устройства с отключенными вентиляторами:")
-    print(df_fan_alarm)
-    print()
+    return {
+        'device_count': cnt_chassi,
+        'fans_disabled': cnt_1_fan_check,
+        'two_fans_disabled': cnt_2_fans_check,
+        'high_temp_devices': temp_warm,
+        'fan_alarm_devices': df_fan_alarm,
+        'temp_alarm_devices': df_temp_alarm}
 
-    print("Устройства с высокой температурой:")
-    print(df_temp_alarm)
+
+def save_to_excel_sheets(data_dict: dict) -> None:
+    """Сохраняет данные в Excel файл с отдельными листами."""
+    try:
+        with pd.ExcelWriter("output.xlsx", engine='openpyxl') as writer:
+            # Сохраняем статистику
+            pd.DataFrame([{
+                'Количество устройств по типам': data_dict['device_count'].to_string(),
+                'Устройства с отключенными вентиляторами': data_dict['fans_disabled'],
+                'Устройства с двумя отключенными вентиляторами': data_dict['two_fans_disabled'],
+                'Устройства с высокой температурой': data_dict['high_temp_devices']
+            }]).to_excel(writer, sheet_name='Статистика', index=False)
+
+            # Сохраняем устройства с отключенными вентиляторами
+            data_dict['fan_alarm_devices'].to_excel(writer, sheet_name='Вентиляторы', index=False)
+
+            # Сохраняем устройства с высокой температурой
+            data_dict['temp_alarm_devices'].to_excel(writer, sheet_name='Температура', index=False)
+
+        print("Данные успешно сохранены в output.xlsx")
+    except Exception as e:
+        print(f"Ошибка при сохранении в Excel: {e}")
 
 
 # Основная программа
@@ -149,4 +166,25 @@ if __name__ == "__main__":
                 df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
 
         # Анализ данных
-        analyze_data(df)
+        analysis_results = analyze_data(df)
+
+        # Вывод статистики в консоль
+        print("Количество устройств по типам:")
+        print(analysis_results['device_count'])
+        print()
+
+        print(f"Устройства с отключенными вентиляторами: {analysis_results['fans_disabled']}")
+        print(f"Устройства с двумя отключенными вентиляторами (не MX104): {analysis_results['two_fans_disabled']}")
+        print(f"Устройства с высокой температурой: {analysis_results['high_temp_devices']}")
+        print()
+
+        print("Устройства с отключенными вентиляторами:")
+        print(analysis_results['fan_alarm_devices'])
+        print()
+
+        print("Устройства с высокой температурой:")
+        print(analysis_results['temp_alarm_devices'])
+        print()
+
+        # Сохранение в Excel
+        save_to_excel_sheets(analysis_results)
