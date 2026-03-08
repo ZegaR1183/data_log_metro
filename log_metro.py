@@ -1,4 +1,5 @@
 import pandas as pd
+import openpyxl
 from typing import List, Dict, Any
 
 # Константы
@@ -155,6 +156,11 @@ def save_to_excel_sheets(data_dict: dict) -> None:
                             pass
                     adjusted_width = min(max_length + 2, 50)  # Максимум 50 символов
                     worksheet.column_dimensions[column_letter].width = adjusted_width
+
+                # Установка выравнивания по центру для всех ячеек
+                for column in worksheet.columns:
+                    for cell in column:
+                        cell.alignment = openpyxl.styles.Alignment(horizontal='center')
 
         print("Данные успешно сохранены в output.xlsx")
     except Exception as e:
