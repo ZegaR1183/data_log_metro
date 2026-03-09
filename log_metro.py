@@ -1,5 +1,6 @@
 import pandas as pd
 import openpyxl
+from datetime import datetime
 from typing import List, Dict, Any
 
 # Константы
@@ -121,19 +122,21 @@ def analyze_data(df: pd.DataFrame) -> None:
         'fan_alarm_devices': df_fan_alarm,
         'temp_alarm_devices': df_temp_alarm}
 
-
+# Создание отчетного файла
 def save_to_excel_sheets(data_dict: dict) -> None:
     """Сохраняет данные в Excel файл с отдельными листами."""
+    # Получить текущую дату
+    current_date = str(datetime.now().strftime("%Y-%m-%d"))
     try:
-        with pd.ExcelWriter("output.xlsx", engine='openpyxl') as writer:
+        with pd.ExcelWriter("output "+current_date+".xlsx", engine='openpyxl') as writer:
             # Сохраняем DataFrame
             df.to_excel(writer,sheet_name="Общая информация", index=False)
 
             # Сохраняем статистику
             pd.DataFrame([{
-                'Устройства с отключенными вентиляторами': data_dict['fans_disabled'],
+                'Устройства с одним отключенным вентилятором': data_dict['fans_disabled'],
                 'Устройства с двумя отключенными вентиляторами': data_dict['two_fans_disabled'],
-                'Устройства с высокой температурой': data_dict['high_temp_devices']
+                'Устройства с температурой > 50': data_dict['high_temp_devices']
             }]).to_excel(writer, sheet_name='Статистика', index=False)
 
             # Сохраняем устройства с отключенными вентиляторами
@@ -229,7 +232,7 @@ if __name__ == "__main__":
 
         print(f"Устройства с отключенными вентиляторами: {analysis_results['fans_disabled']}")
         print(f"Устройства с двумя отключенными вентиляторами (не MX104): {analysis_results['two_fans_disabled']}")
-        print(f"Устройства с высокой температурой: {analysis_results['high_temp_devices']}")
+        print(f"Устройства с температурой > 50: {analysis_results['high_temp_devices']}")
         print()
 
         print("Устройства с отключенными вентиляторами:")
