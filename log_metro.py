@@ -128,7 +128,7 @@ def save_to_excel_sheets(data_dict: dict) -> None:
     # Получить текущую дату
     current_date = str(datetime.now().strftime("%Y-%m-%d"))
     try:
-        with pd.ExcelWriter("output "+current_date+".xlsx", engine='openpyxl') as writer:
+        with pd.ExcelWriter("alarm_report_metro " + current_date + ".xlsx", engine='openpyxl') as writer:
             # Сохраняем DataFrame
             df.to_excel(writer,sheet_name="Общая информация", index=False)
 
