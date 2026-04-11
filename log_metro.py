@@ -221,7 +221,7 @@ def create_table_if_not_exists() -> None:
 def save_to_postgres(df: pd.DataFrame, replace: bool = False) -> None:
     """Сохраняет DataFrame в таблицу devices."""
     try:
-        if_exists = 'replace' if replace else 'append'
+        if_exists = 'append'
         df.to_sql('devices', engine, if_exists=if_exists, index=False, method='multi')
         logger.info(f"Данные сохранены в PostgreSQL (записей: {len(df)}, режим: {if_exists})")
     except Exception as e:
