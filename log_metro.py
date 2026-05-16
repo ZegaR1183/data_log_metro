@@ -249,8 +249,8 @@ def analyze_data(df: pd.DataFrame) -> dict:
     # Проверка температурных колонок
     temp_columns = [c for c in ['temp_pem_0', 'temp_pem_1', 'temp_re_0', 'temp_re_1'] if c in df.columns]
     if temp_columns:
-        temp_warm = ((df[temp_columns] > 50).any(axis=1)).sum()
-        df_temp_alarm = df[(df[temp_columns] > 50).any(axis=1)]
+        temp_warm = ((df[temp_columns] > 60).any(axis=1)).sum()
+        df_temp_alarm = df[(df[temp_columns] > 60).any(axis=1)]
     else:
         temp_warm = 0
         df_temp_alarm = pd.DataFrame()
@@ -267,7 +267,12 @@ def analyze_data(df: pd.DataFrame) -> dict:
 
 def save_to_excel_sheets(df: pd.DataFrame, analysis_results: dict) -> None:
     """Сохраняет данные в Excel файл с отдельными листами."""
-    current_date = datetime.now().strftime("%Y-%m-%d")
+    # Убедимся, что df['date'] — это datetime
+    if not pd.api.types.is_datetime64_any_dtype(df['date']):
+        df = df.copy()
+        df['date'] = pd.to_datetime(df['date'])
+
+    current_date = df['date'].iloc[0].strftime("%Y-%m-%d")
     output_file = f"{OUT_DIR}/alarm_report_metro_{current_date}.xlsx"
 
     try:
@@ -282,7 +287,7 @@ def save_to_excel_sheets(df: pd.DataFrame, analysis_results: dict) -> None:
             pd.DataFrame([{
                 'Устройства с одним отключенным вентилятором': analysis_results['fans_disabled'],
                 'Устройства с двумя отключенными вентиляторами': analysis_results['two_fans_disabled'],
-                'Устройства с температурой > 50': analysis_results['high_temp_devices']
+                'Устройства с температурой > 60°C': analysis_results['high_temp_devices']
             }]).to_excel(writer, sheet_name='Статистика', index=False)
 
             # Сохраняем устройства с отключенными вентиляторами
@@ -328,7 +333,7 @@ def save_to_excel_sheets(df: pd.DataFrame, analysis_results: dict) -> None:
                         if cell.value == 0:
                             cell.fill = styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
 
-            # Условное форматирование — температура > 50 (красный)
+            # Условное форматирование — температура > 60 (красный)
             temp_columns = ['temp_pem_0', 'temp_pem_1', 'temp_re_0', 'temp_re_1']
             for col in temp_columns:
                 if col in df_excel.columns:
@@ -336,7 +341,7 @@ def save_to_excel_sheets(df: pd.DataFrame, analysis_results: dict) -> None:
                     for row in range(2, len(df_excel) + 2):
                         cell = worksheet.cell(row=row, column=col_idx)
                         try:
-                            if cell.value is not None and float(cell.value) > 50:
+                            if cell.value is not None and float(cell.value) > 60:
                                 cell.fill = styles.PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                         except (ValueError, TypeError):
                             pass
@@ -366,7 +371,7 @@ if __name__ == "__main__":
 
     logger.info(f"Устройства с отключёнными вентиляторами: {analysis_results['fans_disabled']}")
     logger.info(f"Устройства с двумя отключёнными вентиляторами (не MX104): {analysis_results['two_fans_disabled']}")
-    logger.info(f"Устройства с температурой > 50°C: {analysis_results['high_temp_devices']}")
+    logger.info(f"Устройства с температурой > 60°C: {analysis_results['high_temp_devices']}")
 
     # Сохранение в PostgreSQL (replace=True для перезаписи, False для дополнения)
     save_to_postgres(df, replace=False)
